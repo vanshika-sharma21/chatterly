@@ -6,7 +6,6 @@ import { connectDB } from './lib/db.js';
 import userRouter from './routes/userRoutes.js';
 import messageRouter from './routes/messageRoutes.js';
 import { Server } from "socket.io";
-import { log } from 'console';
 
 // Create Express app and HTTP server
 const app = express();
@@ -20,16 +19,15 @@ export const io = new Server(server, {
 });
 
 // Store online users
-export const userSockcetMap = {};//{userId: socketId}
+export const userSockcetMap = {}; // {userId: socketId}
 
-// Socket.io connection handling
+// Socket.io Events
 io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
     console.log("User Connected", userId);
 
-    if(userId) userSockcetMap[userId] = socket.id;
+    if (userId) userSockcetMap[userId] = socket.id;
 
-    // Emit online users to all connected clients
     io.emit("getOnlineUsers", Object.keys(userSockcetMap));
 
     socket.on("disconnect", () => {
@@ -38,24 +36,29 @@ io.on("connection", (socket) => {
         io.emit("getOnlineUsers", Object.keys(userSockcetMap));
     });
 });
-// Middleware setup
+
+// Middleware
 app.use(cors());
-app.use(express.json({limit: "4mb"}));
+app.use(express.json({ limit: "4mb" }));
 
+// Root Route (for Vercel preview)
+app.get("/", (req, res) => {
+    res.send("Backend is running successfully 🚀");
+});
 
-// Routes setup
-app.use("/api/status", (req, res) => res.send("Server is live"))
+// API Routes
+app.use("/api/status", (req, res) => res.send("Server is live"));
 app.use("/api/auth", userRouter);
 app.use("/api/messages", messageRouter);
 
-
-// Connect to MongoDB
+// Connect DB
 await connectDB();
 
-if(process.env.NODE_ENV !== "production") {
+// Start server in BOTH local & Vercel
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log("Server is running on PORT:",+ PORT));
-}
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
-// Export server for Vercel
-export default server;
+// Export for Vercel
+export default app;
